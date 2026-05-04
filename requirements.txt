@@ -1,0 +1,6 @@
+customtkinter==5.2.2
+darkdetect==0.8.0
+mutagen==1.47.0
+packaging==26.2
+pillow==12.2.0
+pygame==2.6.1
