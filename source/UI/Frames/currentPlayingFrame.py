@@ -5,9 +5,9 @@ class CurrentPlayingFrame(ctk.CTkFrame):
         super().__init__(master)
         self.master = master
         self.data = data
-        self.currentDisplaying = []
 
-        for i, value in enumerate(self.data):
-            label = self.CTkLabel(self, text=f"{i + 1}. {value['title']} - {value['time']}")
-            label.grid(row=i, column=0, padx=10, pady=5, sticky="w")
-            self.currentDisplaying.append(label)
+        self.currentDisplaying = None
+        
+        if self.data:
+            self.currentDisplaying = ctk.CTkLabel(self, text=f"{self.data['title']} - {self.data['artist']}")
+            self.currentDisplaying.grid(row=0, column=0, padx=10, pady=5, sticky="we")

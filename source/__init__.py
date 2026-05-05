@@ -1,1 +1,3 @@
-print("modulo es el programa principal")
+from .UI import Frames
+
+__all__ = ["Frames"]

@@ -10,10 +10,10 @@ class LibraryFrame(ctk.CTkFrame):
 
         for i, value in enumerate(self.data):
 
-            img = Image.open(value['img']).resize((30, 30))
-            tkImg = ImageTk.PhotoImage(img)
-            label = self.CTkLabel(self, text=value['title'])
-            label.image = tkImg 
+            #img = Image.open(value['img']).resize((30, 30))
+            #tkImg = ImageTk.PhotoImage(img)
+            label = ctk.CTkLabel(self, text=value['title'])
+            #label.image = tkImg 
             label.configure(compound="left")
             label.grid(row=i, column=0, padx=10, pady=5, sticky="w")
             self.currentDisplay.append(label)
