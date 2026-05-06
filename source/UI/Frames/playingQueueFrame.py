@@ -8,6 +8,6 @@ class PlayingQueueFrame(ctk.CTkFrame):
         self.currentDisplaying = []
 
         for i, value in enumerate(self.data):
-            label = ctk.CTkLabel(self, text=f"{i + 1}. {value['title']} - {value['time']}")
-            label.grid(row=i, column=0, padx=10, pady=5, sticky="w")
-            self.currentDisplaying.append(label)
+            button = ctk.CTkButton(self, text=f"{i + 1}. {value['title']} - {value['time']}")
+            button.grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            self.currentDisplaying.append(button)
