@@ -20,7 +20,7 @@ class App(ctk.CTk):
         })
         self.frame.pack(fill="both", expand=True)
 if __name__ == "__main__":
-    ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (default), "dark-blue", "green"
+    ctk.set_appearance_mode("dark")  # Modes: "System" (default), "Dark", "Light"
     app = App()
 
     app.mainloop()
