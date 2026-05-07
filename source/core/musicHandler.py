@@ -42,7 +42,7 @@ class MusicHandler:
 
     def selectPlaylist(self, playlistPath):
         self.clearQueue()
-        musics = [f for f in os.listdir(playlistPath) if f.endswith(('.mp3', '.wav', '.ogg'))]
+        musics = [f for f in os.listdir(playlistPath) if f.endswith(('.mp3', '.wav', '.ogg', '.flac'))]
         for music in musics:
             self.addToQueue(os.path.join(playlistPath, music))
 
