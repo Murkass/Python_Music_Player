@@ -4,12 +4,6 @@ from collections import deque
 import os
 import numpy as np
 import soundfile as sf
-"""
-TODO: Criar forma de gerenciar um multiProcessos com PID, com lock para não tocar mais de uma vez
-E fazer com que renderize o waveform dentro do customTkinter com o matplotlib, usando o canvas do customTkinter para renderizar o gráfico, e não abrir uma janela separada
-Arrumar a parte das pastas com dir_name para facilitar e não precisar do caminho absoluto
-Ah, arrumar esses importes nada haver
-"""
 
 CHUNK_SIZE = 1024 # Tamanho do bloco de áudio lido por vez
 
@@ -122,15 +116,49 @@ class MusicHandler:
     def getVol(self):
         return mixer.music.get_volume()
 
-    def getSpectrumData(self, filePath):
-        samplerate = sf.info(filePath)
-        miliseconds = mixer.music.get_pos()
-        currentFrame = (samplerate * miliseconds) / 1000
-        data = sf.read(file=filePath, frames=currentFrame)
+    def getCurrentPosition(self):
+        """Retorna a posição atual da reprodução em segundos."""
+        try:
+            pos_ms = mixer.music.get_pos()
+            if pos_ms is None or pos_ms < 0:
+                return 0.0
+            return pos_ms / 1000.0
+        except Exception as e:
+            print(f"Error getting current position: {e}")
+            return 0.0
 
-        if(mixer.music.get_endevent()):
-            return []
+    def getSpectrumData(self, filePath, window_ms: int = 200):
+        """
+        Retorna magnitudes aproximadas do espectro no ponto atual da música.
+        Lê uma janela curta do arquivo a partir da posição atual.
+        """
+        try:
+            info = sf.info(filePath)
+            samplerate = info.samplerate
+            pos_ms = mixer.music.get_pos()
+            if pos_ms is None or pos_ms < 0:
+                pos_ms = 0
 
-        fft_res = np.fft.rfft(data)
-        magnitudes = np.abs(fft_res)
-        return magnitudes
+            # Janela centrada na posição atual
+            start_ms = max(0, int(pos_ms - window_ms // 2))
+            start_frame = int(start_ms * samplerate / 1000)
+            frames = int(window_ms * samplerate / 1000)
+
+            data, sr = sf.read(filePath, start=start_frame, frames=frames, dtype='float32')
+            if data is None or getattr(data, 'size', 0) == 0:
+                return np.array([])
+
+            if data.ndim > 1:
+                data = data.mean(axis=1)
+
+            # Aplica janela para reduzir leakage
+            if len(data) > 1:
+                window = np.hanning(len(data))
+                data = data * window
+
+            fft_res = np.fft.rfft(data)
+            magnitudes = np.abs(fft_res)
+            return magnitudes
+        except Exception as e:
+            print(f"Error getting spectrum: {e}")
+            return np.array([])

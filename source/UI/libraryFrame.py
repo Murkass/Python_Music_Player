@@ -9,15 +9,18 @@ class LibraryFrame(LibraryHandler, ctk.CTkFrame):
         LibraryHandler.__init__(self)  # Inicializa handler
         ctk.CTkFrame.__init__(self, master)  # Inicializa frame
         self.handler = musicHandler
-        
-        # Agora pode usar: self.add_music_to_playlist(), etc
+        self._build_ui()
+
+    def _build_ui(self):
         playlists = self.get_all_playlists()
         for playlist in playlists:
-            btn = ctk.CTkButton(self, text=playlist, 
-                              command=lambda p=playlist: self.get_playlist(p))
-            btn.pack()
+            btn = ctk.CTkButton(self, text=playlist, command=lambda p=playlist: self._on_playlist_click(p))
+            btn.pack(fill="x", padx=8, pady=4)
 
-    def get_playlist(self, playlist_name):
-        playlist = super().get_playlist(playlist_name)
-        self.handler.selectPlaylist()
-        return 
+    def _on_playlist_click(self, playlist_name):
+        # Notifica o MainArea (se presente) para mostrar a playlist selecionada
+        try:
+            if hasattr(self.master, 'mainArea') and getattr(self.master, 'mainArea') is not None:
+                self.master.mainArea.select_playlist(playlist_name)
+        except Exception as e:
+            print(f"Error notifying main area about playlist selection: {e}")

@@ -16,7 +16,13 @@
             "created_at": "0"
         },
         "Rock": {
-            "musics": [],
+            "musics": [
+                {
+                    "path": "source/musics/teste.mp3",
+                    "title": "Good Day",
+                    "artist": "Perry Como"
+                }
+            ],
             "created_at": "0"
         }
     }
