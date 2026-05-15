@@ -7,7 +7,7 @@ class App(ctk.CTk):
         self.geometry("800x600")
         self.title("CustomTkinter Example")
 
-        self.frame = Frames.mainFrame(self, data={
+        self.frame = UI.mainFrame(self, data={
             "current": {"title": "Song Title", "artist": "Artist Name"}, 
             "queue": [
                 {"title": "Next Song 1", "time": "3:45"}, 

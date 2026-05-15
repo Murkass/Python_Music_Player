@@ -1,3 +1,3 @@
-from .UI import Frames
+from . import UI
 
-__all__ = ["Frames"]
+__all__ = ["UI"]
