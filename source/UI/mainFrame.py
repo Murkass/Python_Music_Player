@@ -4,12 +4,12 @@ from .playingQueueFrame import PlayingQueueFrame
 from .currentPlayingFrame import CurrentPlayingFrame
 from .main_area import MainAreaFrame
 
-from source.core.musicHandler import MusicHandler
-from source.core.libraryHandler import LibraryHandler
+from source.core import *
 
-mHandler = MusicHandler()
-libHandler = LibraryHandler()
 
+storeHandler = StoreHandler()
+mHandler = MusicHandler(storeHandler)
+libHandler = LibraryHandler(storeHandler)
 
 class MainFrame(ctk.CTkFrame):
     def __init__(self, master, data=None):
@@ -22,7 +22,7 @@ class MainFrame(ctk.CTkFrame):
         self.grid_rowconfigure(0, weight=3)
         self.grid_rowconfigure(1, weight=1)
 
-        self.libraryFrame = LibraryFrame(self, musicHandler=mHandler)
+        self.libraryFrame = LibraryFrame(self, storeHandler=storeHandler, musicHandler=mHandler)
         self.libraryFrame.grid(row=0, column=0, rowspan=1, padx=10, pady=10, sticky="nsew")
 
         self.mainArea = MainAreaFrame(self, music_handler=mHandler, library_handler=libHandler)

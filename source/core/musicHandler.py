@@ -4,17 +4,81 @@ from collections import deque
 import os
 import numpy as np
 import soundfile as sf
+from threading import Lock
+from datetime import datetime
+
+from .storeHandler import StoreHandler
 
 CHUNK_SIZE = 1024 # Tamanho do bloco de áudio lido por vez
 
 class MusicHandler:
-    def __init__(self):
+    def __init__(self, storeHandler: StoreHandler):
         self.currentPlaying = None
         self.playingQueue = deque()
+        # historic holds most-recent first (appendleft)
         self.historic = deque(maxlen=50)
+        self._lock = Lock()
         self.paused = False
+        self.storeHandler = storeHandler
+        # carregar histórico persistido (se houver) — compatível com 'history' top-level
+        try:
+            sd = getattr(self.storeHandler, 'store_data', {}) or {}
+            stored = sd.get('history') or sd.get('historic') or []
+            if isinstance(stored, list) and stored:
+                # normalizar entradas para formato interno (filePath/title/artist/time)
+                normalized = []
+                for item in stored:
+                    if not isinstance(item, dict):
+                        continue
+                    path = item.get('path') or item.get('filePath') or item.get('file_path')
+                    title = item.get('title')
+                    artist = item.get('artist')
+                    time_str = item.get('time') or item.get('duration') or ''
+                    normalized.append({
+                        'filePath': path,
+                        'title': title,
+                        'artist': artist,
+                        'time': time_str
+                    })
+                self.historic = deque(normalized, maxlen=50)
+        except Exception:
+            pass
         mixer.init()
         mixer.music.set_volume(0.5)
+
+    def _persist_historic(self):
+        """Persiste o histórico atual no StoreHandler (store.json)."""
+        try:
+            # converter deque para lista serializável
+            hist_list = []
+            for item in list(self.historic):
+                if not isinstance(item, dict):
+                    continue
+                path = item.get('filePath') or item.get('path') or item.get('file_path')
+                hist_list.append({
+                    'path': path,
+                    'title': item.get('title'),
+                    'artist': item.get('artist'),
+                    'played_at': item.get('played_at') or datetime.utcnow().isoformat()
+                })
+
+            # gravar no store sob a chave top-level 'history' (compatível)
+            try:
+                if hasattr(self.storeHandler, 'set_storageData'):
+                    self.storeHandler.set_storageData('history', hist_list)
+                else:
+                    self.storeHandler.store_data['history'] = hist_list
+            except Exception:
+                self.storeHandler.store_data['history'] = hist_list
+
+            # forçar salvar
+            if hasattr(self.storeHandler, '_save_store'):
+                try:
+                    self.storeHandler._save_store()
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"Error persisting historic: {e}")
 
     def addToQueue(self, _filePath, _title, _artist):
         try:
@@ -39,9 +103,15 @@ class MusicHandler:
             print(f"Error adding to queue: {e}")
 
     def clearQueue(self):
-        self.playingQueue.clear()
-        self.historic.clear()
-        self.currentPlaying = None
+        with self._lock:
+            self.playingQueue.clear()
+            self.historic.clear()
+            self.currentPlaying = None
+            # persistir histórico vazio
+            try:
+                self._persist_historic()
+            except Exception:
+                pass
         mixer.music.stop()
 
     def selectPlaylist(self, playlistObj):
@@ -61,7 +131,18 @@ class MusicHandler:
     def playNext(self):
         try:
             if self.playingQueue:
-                self.historic.appendleft(self.currentPlaying) if self.currentPlaying else None
+                if self.currentPlaying:
+                    # registrar metadados de reprodução com timestamp
+                    hist_item = dict(self.currentPlaying) if isinstance(self.currentPlaying, dict) else {
+                        'filePath': getattr(self.currentPlaying, 'filePath', None)
+                    }
+                    hist_item['played_at'] = datetime.utcnow().isoformat()
+                    with self._lock:
+                        self.historic.appendleft(hist_item)
+                        try:
+                            self._persist_historic()
+                        except Exception:
+                            pass
                 self.currentPlaying = self.playingQueue.popleft()
                 mixer.music.load(self.currentPlaying["filePath"])
                 mixer.music.play()
@@ -72,8 +153,15 @@ class MusicHandler:
     def playPrevious(self):
         try:
             if self.historic:
-                self.playingQueue.appendleft(self.currentPlaying) if self.currentPlaying else None
-                self.currentPlaying = self.historic.popleft()
+                if self.currentPlaying:
+                    self.playingQueue.appendleft(self.currentPlaying)
+                with self._lock:
+                    self.currentPlaying = self.historic.popleft()
+                    # ao remover do histórico, já persistido anteriormente, apenas atualizar store
+                    try:
+                        self._persist_historic()
+                    except Exception:
+                        pass
                 mixer.music.load(self.currentPlaying["filePath"])
                 mixer.music.play()
                 return self.getCurrentTrackInfo()
@@ -96,7 +184,17 @@ class MusicHandler:
     def selectTrack(self, index):
         try:
             if 0 <= index < len(self.playingQueue):
-                self.historic.appendleft(self.currentPlaying) if self.currentPlaying else None
+                if self.currentPlaying:
+                    hist_item = dict(self.currentPlaying) if isinstance(self.currentPlaying, dict) else {
+                        'filePath': getattr(self.currentPlaying, 'filePath', None)
+                    }
+                    hist_item['played_at'] = datetime.utcnow().isoformat()
+                    with self._lock:
+                        self.historic.appendleft(hist_item)
+                        try:
+                            self._persist_historic()
+                        except Exception:
+                            pass
                 self.currentPlaying = self.playingQueue[index]
                 mixer.music.load(self.currentPlaying["filePath"])
                 mixer.music.play()

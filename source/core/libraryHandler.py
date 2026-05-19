@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 from typing import List, Dict, Optional
+from datetime import datetime
+from .storeHandler import StoreHandler
 
 class LibraryHandler:
     """
@@ -9,41 +11,42 @@ class LibraryHandler:
     Responsável por salvar, carregar, modificar e organizar playlists no JSON.
     """
     
-    def __init__(self, library_path: str = "source/core/library.json"):
+    def __init__(self, storeHandler: StoreHandler):
         """
         Inicializa o handler com o caminho do arquivo de biblioteca.
         
         Args:
             library_path: Caminho do arquivo library.json
         """
-        self.library_path = library_path
-        self.library_data = self._load_library()
-    
-    def _load_library(self) -> Dict:
-        """Carrega a biblioteca do JSON ou cria uma nova estrutura."""
-        if os.path.exists(self.library_path):
-            try:
-                with open(self.library_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    return data if data else self._create_default_structure()
-            except (json.JSONDecodeError, IOError):
-                return self._create_default_structure()
-        return self._create_default_structure()
-    
-    def _create_default_structure(self) -> Dict:
-        """Cria a estrutura padrão da biblioteca."""
-        return {
-            "playlists": {}
+        self.handler = storeHandler
+        # carregar dados existentes das chaves top-level (compatível com formato atual)
+        sd = getattr(self.handler, 'store_data', {}) or {}
+        playlists = sd.get('playlists', {})
+        settings = sd.get('settings', {})
+        history = sd.get('history', [])
+        # garantir tipos esperados
+        self.library_data = {
+            'playlists': playlists if isinstance(playlists, dict) else {},
+            'settings': settings if isinstance(settings, dict) else {},
+            'history': history if isinstance(history, list) else []
         }
     
     def _save_library(self) -> bool:
         """Salva a biblioteca no JSON."""
         try:
-            os.makedirs(os.path.dirname(self.library_path) or ".", exist_ok=True)
-            with open(self.library_path, 'w', encoding='utf-8') as f:
-                json.dump(self.library_data, f, indent=4, ensure_ascii=False)
-            return True
-        except IOError as e:
+            # Atualizar keys top-level para compatibilidade com o formato existente
+            try:
+                self.handler.set_storageData('playlists', self.library_data.get('playlists', {}))
+                self.handler.set_storageData('history', self.library_data.get('history', []))
+                self.handler.set_storageData('settings', self.library_data.get('settings', {}))
+            except Exception:
+                # fallback direto
+                self.handler.store_data['playlists'] = self.library_data.get('playlists', {})
+                self.handler.store_data['history'] = self.library_data.get('history', [])
+                self.handler.store_data['settings'] = self.library_data.get('settings', {})
+
+            return self.handler._save_store()
+        except Exception as e:
             print(f"Erro ao salvar biblioteca: {e}")
             return False
     
@@ -57,13 +60,12 @@ class LibraryHandler:
         Returns:
             True se criada com sucesso, False se já existe
         """
-        if playlist_name in self.library_data["playlists"]:
+        if playlist_name in self.library_data.get("playlists", {}):
             print(f"Playlist '{playlist_name}' já existe.")
             return False
-        
         self.library_data["playlists"][playlist_name] = {
             "musics": [],
-            "created_at": str(Path(self.library_path).stat().st_mtime if os.path.exists(self.library_path) else 0)
+            "created_at": datetime.utcnow().isoformat()
         }
         return self._save_library()
     

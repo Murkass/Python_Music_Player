@@ -1,12 +1,11 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
-from source.core.libraryHandler import LibraryHandler
-from source.core.musicHandler import MusicHandler
+from source.core import *
 
 
 class LibraryFrame(LibraryHandler, ctk.CTkFrame):
-    def __init__(self, master, musicHandler: MusicHandler):
-        LibraryHandler.__init__(self)  # Inicializa handler
+    def __init__(self, master, storeHandler: StoreHandler, musicHandler: MusicHandler):
+        LibraryHandler.__init__(self, storeHandler)  # Inicializa handler
         ctk.CTkFrame.__init__(self, master)  # Inicializa frame
         self.handler = musicHandler
         self._build_ui()

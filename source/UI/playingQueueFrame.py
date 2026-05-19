@@ -1,6 +1,6 @@
 import customtkinter as ctk
 
-
+#TODO: Fazer a metade de cima mostrar o historico o meio a musica atual e a metade de baixo a fila de proximos
 class PlayingQueueFrame(ctk.CTkScrollableFrame):
     def __init__(self, master, music_handler):
         super().__init__(master)
