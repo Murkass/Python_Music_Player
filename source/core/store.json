@@ -1,26 +1,64 @@
 {
+    "tracks": [
+        {
+            "path": "/home/guest/Área de trabalho/Projetos/Universidade/Python_Music_Player/source/musics/teste.mp3",
+            "title": "teste",
+            "artist": "Unknown",
+            "album": "Unknown Album",
+            "genre": "Unknown Genre",
+            "duration": 0.0,
+            "is_favorite": false,
+            "play_count": 0
+        }
+    ],
     "playlists": {
         "teste": {
             "musics": [
                 {
                     "path": "/home/guest/Área de trabalho/Projetos/Universidade/Python_Music_Player/source/musics/teste.mp3",
                     "title": "teste",
-                    "artist": "Unknown"
+                    "artist": "Unknown",
+                    "album": "Unknown Album",
+                    "genre": "Unknown Genre",
+                    "duration": 0.0,
+                    "is_favorite": false,
+                    "play_count": 0
                 },
                 {
                     "path": "/home/guest/Área de trabalho/Projetos/Universidade/Python_Music_Player/source/musics/teste.mp3",
                     "title": "teste",
-                    "artist": "Unknown"
+                    "artist": "Unknown",
+                    "album": "Unknown Album",
+                    "genre": "Unknown Genre",
+                    "duration": 0.0,
+                    "is_favorite": false,
+                    "play_count": 0
                 },
                 {
                     "path": "/home/guest/Área de trabalho/Projetos/Universidade/Python_Music_Player/source/musics/teste.mp3",
                     "title": "teste",
-                    "artist": "Unknown"
+                    "artist": "Unknown",
+                    "album": "Unknown Album",
+                    "genre": "Unknown Genre",
+                    "duration": 0.0,
+                    "is_favorite": false,
+                    "play_count": 0
                 }
             ],
             "created_at": "2026-05-19T01:11:12.743174"
+        },
+        "teste_02": {
+            "musics": [],
+            "created_at": "2026-05-19T23:21:34.960180"
         }
     },
     "history": [],
-    "settings": {}
+    "play_counts": {},
+    "settings": {
+        "volume": 0.5,
+        "last_playlist": "teste_02",
+        "appearance_mode": "Dark",
+        "color_theme": "Terracota",
+        "spatial_balance": 0.8816705336426913
+    }
 }

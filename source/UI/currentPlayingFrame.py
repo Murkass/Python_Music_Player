@@ -1,236 +1,134 @@
+from __future__ import annotations
+
 import customtkinter as ctk
-import math
-import numpy as np
+
+from source.core.libraryHandler import LibraryHandler
 from source.core.musicHandler import MusicHandler
+from .style import UITheme, button_tokens, get_theme
 
 
 class CurrentPlayingFrame(ctk.CTkFrame):
-    def __init__(self, master, musicHandler: MusicHandler):
-        super().__init__(master)
-        self.master = master
+    def __init__(self, master, musicHandler: MusicHandler, library_handler: LibraryHandler):
+        super().__init__(master, corner_radius=18)
         self.handler = musicHandler
+        self.library_handler = library_handler
+        self.theme = get_theme(self.library_handler.get_settings().get("color_theme"))
 
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=0)
-        self.columnconfigure((0, 1, 2), weight=1)
+        self.grid_columnconfigure(0, weight=2)
+        self.grid_columnconfigure(1, weight=3)
+        self.grid_columnconfigure(2, weight=2)
 
-        self.track_label = ctk.CTkLabel(self, text="Nenhuma música tocando", anchor="w")
-        self.track_label.grid(row=0, column=0, padx=10, pady=5, sticky="we")
+        self.track_title = ctk.CTkLabel(self, text="Nenhuma faixa em reprodução", anchor="w", font=("Bahnschrift", 20, "bold"))
+        self.track_title.grid(row=0, column=0, sticky="ew", padx=14, pady=(12, 2))
 
-        cControlFrame = ctk.CTkFrame(self, fg_color="transparent")
-        cControlFrame.grid(row=0, column=1, padx=10, pady=5)
+        self.track_meta = ctk.CTkLabel(self, text="", anchor="w")
+        self.track_meta.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 12))
 
-        self.prev_btn = ctk.CTkButton(cControlFrame, text="<-", width=40, command=self._prev)
-        self.prev_btn.pack(side="left", padx=5)
-        self.play_btn = ctk.CTkButton(cControlFrame, text="Play", width=40, command=self._toggle_play_pause)
-        self.play_btn.pack(side="left", padx=5)
-        self.next_btn = ctk.CTkButton(cControlFrame, text="->", width=40, command=self._next)
-        self.next_btn.pack(side="left", padx=5)
+        self.controls = ctk.CTkFrame(self, fg_color="transparent")
+        self.controls.grid(row=0, column=1, rowspan=2, sticky="n", pady=12)
 
-        self.placeholder = ctk.CTkLabel(self, text="", anchor="e")
-        self.placeholder.grid(row=0, column=2, padx=10, pady=5, sticky="we")
+        self.prev_button = ctk.CTkButton(self.controls, text="<<", width=40, command=self.handler.playPrevious)
+        self.prev_button.pack(side="left", padx=6)
+        self.play_button = ctk.CTkButton(self.controls, text=">", width=40, command=self.handler.playPause)
+        self.play_button.pack(side="left", padx=6)
+        self.next_button = ctk.CTkButton(self.controls, text=">>", width=40, command=self.handler.playNext)
+        self.next_button.pack(side="left", padx=6)
 
-        # Canvas onde ficará o analisador/espectrograma e a barra de progresso
-        self.canvas = ctk.CTkCanvas(self, height=120, highlightthickness=0, bg=f"{self.cget("fg_color")[1]}")
-        self.canvas.grid(row=1, column=0, columnspan=3, sticky="we", padx=10, pady=5)
+        self.side_controls = ctk.CTkFrame(self, fg_color="transparent")
+        self.side_controls.grid(row=0, column=2, rowspan=2, sticky="e", padx=14, pady=12)
 
-        # Número de barras (conforme solicitado)
-        self.num_bars = 22
-        self.bar_ids = []
-        for _ in range(self.num_bars):
-            # cria linhas verticais que serão renderizadas com capstyle 'round' (barras arredondadas)
-            bid = self.canvas.create_line(0, 0, 0, 0, fill="#263244", width=3, capstyle='round')
-            self.bar_ids.append(bid)
+        self.favorite_button = ctk.CTkButton(self.side_controls, text="*", width=40, command=self._toggle_favorite)
+        self.favorite_button.pack(anchor="e", pady=(0, 8))
 
-        # cores e parâmetros de renderização (fora do loop)
-        self.filled_color = "#1F6FEB"  # azul escuro para preenchimento
-        self.unfilled_color = "#263244"  # cinza-azulado escuro para não-preenchido
-        self.height_scale = 0.55  # reduz a altura das barras
-        self.gap = 8  # espaçamento entre barras
-        # buffer para suavização entre frames
-        self.prev_heights = np.zeros(self.num_bars, dtype=float)
-        self.smoothing_alpha = 0.35
+        self.time_label = ctk.CTkLabel(self.side_controls, text="0:00 / 0:00", anchor="e")
+        self.time_label.pack(anchor="e")
 
-        self.after(100, self._update_ui)
+        self.progress = ctk.CTkProgressBar(self)
+        self.progress.grid(row=2, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 10))
+        self.progress.set(0)
 
-    def _prev(self):
-        try:
-            self.handler.playPrevious()
-        except Exception as e:
-            print(f"Error previous: {e}")
+        self.sliders = ctk.CTkFrame(self, fg_color="transparent")
+        self.sliders.grid(row=3, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 14))
+        self.sliders.grid_columnconfigure((1, 3), weight=1)
 
-    def _next(self):
-        try:
-            self.handler.playNext()
-        except Exception as e:
-            print(f"Error next: {e}")
+        self.volume_label = ctk.CTkLabel(self.sliders, text="Volume")
+        self.volume_label.grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self.volume_slider = ctk.CTkSlider(self.sliders, from_=0, to=1, command=self.handler.setVol)
+        self.volume_slider.grid(row=0, column=1, sticky="ew", padx=(0, 16))
 
-    def _toggle_play_pause(self):
-        try:
-            self.handler.playPause()
-        except Exception as e:
-            print(f"Error play/pause: {e}")
+        self.balance_label = ctk.CTkLabel(self.sliders, text="Balanço Espacial")
+        self.balance_label.grid(row=0, column=2, sticky="w", padx=(0, 8))
+        self.balance_slider = ctk.CTkSlider(self.sliders, from_=-1, to=1, command=self.handler.update_spatial_balance)
+        self.balance_slider.grid(row=0, column=3, sticky="ew")
 
-    def _update_ui(self):
-        info = None
-        try:
-            info = self.handler.getCurrentTrackInfo()
-        except Exception as e:
-            print(f"Error getting current track info: {e}")
+        self.bind("<Motion>", self._handle_pointer_motion)
+        self.volume_slider.set(self.handler.getVol())
+        self.balance_slider.set(self.handler.get_spatial_state()["balance"])
+        self.apply_theme(self.theme)
+        self._sync_from_handler()
 
-        total_seconds = 0
-        if info:
-            self.track_label.configure(text=f"{info.get('title','Unknown')} - {info.get('artist','Unknown')}")
-            # parse total time "M:SS"
-            t = info.get('time', '0:00')
-            try:
-                parts = t.split(":")
-                mins = int(parts[0])
-                secs = int(parts[1]) if len(parts) > 1 else 0
-                total_seconds = mins * 60 + secs
-            except Exception:
-                total_seconds = 0
-            try:
-                paused = getattr(self.handler, 'paused', False)
-                self.play_btn.configure(text="Play" if paused else "Pause")
-            except Exception:
-                pass
-        else:
-            self.track_label.configure(text="Nenhuma música tocando")
-            self.play_btn.configure(text="Play")
+    def apply_theme(self, theme: UITheme) -> None:
+        self.theme = theme
+        self.configure(fg_color=theme.surface, border_width=1, border_color=theme.border)
+        self.track_title.configure(text_color=theme.text)
+        self.track_meta.configure(text_color=theme.text_muted)
+        self.time_label.configure(text_color=theme.text_muted)
+        self.volume_label.configure(text_color=theme.text)
+        self.balance_label.configure(text_color=theme.text)
+        self.prev_button.configure(corner_radius=14, height=32, **button_tokens(theme, "ghost"))
+        self.play_button.configure(corner_radius=14, height=32, **button_tokens(theme, "selected"))
+        self.next_button.configure(corner_radius=14, height=32, **button_tokens(theme, "ghost"))
+        self.favorite_button.configure(corner_radius=14, height=32, **button_tokens(theme, "secondary"))
+        self.progress.configure(progress_color=theme.accent, fg_color=theme.accent_soft)
+        self.volume_slider.configure(progress_color=theme.accent, button_color=theme.accent, button_hover_color=theme.accent_hover)
+        self.balance_slider.configure(progress_color=theme.accent, button_color=theme.accent, button_hover_color=theme.accent_hover)
 
-        # posição atual em segundos (pede ao handler)
-        try:
-            current_pos = getattr(self.handler, 'getCurrentPosition', lambda: 0)()
-        except Exception:
-            current_pos = 0
+    def _format_time(self, seconds: float) -> str:
+        total_seconds = max(0, int(seconds))
+        minutes, remainder = divmod(total_seconds, 60)
+        return f"{minutes}:{remainder:02d}"
 
-        percent = 0.0
-        if total_seconds > 0:
-            percent = min(1.0, current_pos / total_seconds)
+    def _handle_pointer_motion(self, event) -> None:
+        self.handler.update_sound_parallax_from_pointer(event.x, max(self.winfo_width(), 1))
 
-        filled_bars = int(math.floor(self.num_bars * percent))
+    def _toggle_favorite(self) -> None:
+        current = self.handler.currentPlaying
+        if current is None:
+            return
+        updated = self.library_handler.toggle_favorite(current.path)
+        if updated is None:
+            return
+        self.handler.sync_current_track_from_library()
+        self.handler.broadcast_state("track_updated")
+        self._sync_from_handler()
 
-        # Tenta obter dados de espectro do handler para gerar alturas (centralizadas e espelhadas)
-        heights = np.zeros(self.num_bars, dtype=float)
-        try:
-            file_path = None
-            if getattr(self.handler, 'currentPlaying', None):
-                file_path = self.handler.currentPlaying.get('filePath')
-            if file_path and getattr(self.handler, 'getSpectrumData', None):
-                mags = self.handler.getSpectrumData(file_path)
-                if mags is not None and len(mags) >= 2:
-                    mags = np.array(mags)
-                    # Ignorar DC para evitar dominação por offset
-                    mags = mags[1:]
-                    n = len(mags)
-                    half_count = math.ceil(self.num_bars / 2)
+    def _sync_from_handler(self) -> None:
+        track = self.handler.currentPlaying
+        if track is None:
+            self.track_title.configure(text="Nenhuma faixa em reprodução")
+            self.track_meta.configure(text="")
+            self.favorite_button.configure(text="*")
+            self.time_label.configure(text="0:00 / 0:00")
+            self.play_button.configure(text=">")
+            self.progress.set(0)
+            return
 
-                    # gerar bordas linearmente espaçadas (mais simples e previsível)
-                    edges = np.unique(np.linspace(1, n, num=half_count + 1).astype(int))
+        self.track_title.configure(text=track.title)
+        self.track_meta.configure(text=f"{track.artist} | {track.album} | {track.genre}")
+        favorite_variant = "danger" if track.is_favorite else "secondary"
+        self.favorite_button.configure(text="**" if track.is_favorite else "*", **button_tokens(self.theme, favorite_variant))
+        self.play_button.configure(text=">" if self.handler.paused else "||")
+        self.volume_slider.set(self.handler.getVol())
+        self.balance_slider.set(self.handler.get_spatial_state()["balance"])
 
-                    # garantir bordas válidas
-                    if edges[0] < 1:
-                        edges[0] = 1
-                    if edges[-1] < n:
-                        edges = np.append(edges, n)
-                    if len(edges) < half_count + 1:
-                        edges = np.linspace(1, n, num=half_count + 1).astype(int)
+        position = self.handler.getCurrentPosition()
+        duration = track.duration
+        progress = min(1.0, position / duration) if duration > 0 else 0.0
+        self.progress.set(progress)
+        self.time_label.configure(text=f"{self._format_time(position)} / {self._format_time(duration)}")
 
-                    vals_half = []
-                    for i in range(len(edges) - 1):
-                        s = edges[i] - 1
-                        e = edges[i + 1] - 1
-                        if s < 0:
-                            s = 0
-                        if e <= s:
-                            seg = mags[s:s + 1]
-                        else:
-                            seg = mags[s:e]
-                        if seg.size:
-                            # use RMS for stability
-                            vals_half.append(np.sqrt(np.mean(np.square(seg))))
-                        else:
-                            vals_half.append(0.0)
-
-                    vals_half = np.array(vals_half, dtype=float)
-                    if vals_half.size == 0:
-                        vals_half = np.zeros(half_count)
-
-                    # dynamic range compression (log) to reduce dominance of very large bins
-                    vals_half = np.log1p(vals_half)
-                    maxv = np.max(vals_half) if np.max(vals_half) > 0 else 1.0
-                    half_norm = vals_half / maxv
-
-                    # boost higher-frequency bins (outer bars) to make extremes more visible
-                    freq_boost = getattr(self, 'freq_boost', 1.8)
-                    boost_curve = np.linspace(1.0, freq_boost, num=len(half_norm))
-                    half_norm = half_norm * boost_curve
-
-                    # gamma correction to lift lower values (gamma < 1 boosts small numbers)
-                    gamma = getattr(self, 'gamma', 0.6)
-                    half_norm = np.power(half_norm, gamma, where=(half_norm>=0))
-
-                    # renormalize after boosts
-                    if np.max(half_norm) > 0:
-                        half_norm = half_norm / np.max(half_norm)
-
-                    mid = self.num_bars // 2
-                    # mirror half_norm to both sides around center
-                    if self.num_bars % 2 == 1:
-                        for i, v in enumerate(half_norm):
-                            if i == 0:
-                                heights[mid] = v
-                            else:
-                                left = mid - i
-                                right = mid + i
-                                if 0 <= left < self.num_bars:
-                                    heights[left] = v
-                                if 0 <= right < self.num_bars:
-                                    heights[right] = v
-                    else:
-                        for i, v in enumerate(half_norm):
-                            left = mid - 1 - i
-                            right = mid + i
-                            if 0 <= left < self.num_bars:
-                                heights[left] = v
-                            if 0 <= right < self.num_bars:
-                                heights[right] = v
-
-                    # spatial smoothing to spread energy to neighbors
-                    try:
-                        kernel = np.array([0.25, 0.5, 0.25])
-                        heights = np.convolve(heights, kernel, mode='same')
-                    except Exception:
-                        pass
-
-                    # temporal smoothing to reduce jitter
-                    new_h = heights.copy()
-                    smoothed = (1.0 - self.smoothing_alpha) * self.prev_heights + self.smoothing_alpha * new_h
-                    heights = smoothed
-                    self.prev_heights = heights
-        except Exception:
-            pass
-
-        # Atualiza barras no canvas usando linhas com capstyle 'round'
-        width = self.canvas.winfo_width() or self.winfo_width() or 400
-        height = self.canvas.winfo_height() or 100
-        gap = getattr(self, 'gap', 3)
-        bar_w = max(2, (width - (self.num_bars + 1) * gap) / self.num_bars)
-        for i, bid in enumerate(self.bar_ids):
-            x_center = gap + i * (bar_w + gap) + (bar_w / 2)
-            h = int(heights[i] * height * getattr(self, 'height_scale', 0.55))
-            y1 = max(0, height - h)
-            y2 = height - 1
-            try:
-                self.canvas.coords(bid, x_center, y1, x_center, y2)
-                color = self.filled_color if i < filled_bars else self.unfilled_color
-                # largura da linha controla a espessura da barra; capstyle='round' deixa as extremidades arredondadas
-                actual_line_width = max(1.0, bar_w * 1.2)
-                self.canvas.itemconfig(bid, fill=color, width=actual_line_width)
-            except Exception:
-                pass
-
-        self.after(100, self._update_ui)
+    def handle_player_event(self, event: str, payload: dict) -> None:
+        if event in {"track_changed", "play_pause", "position_update", "track_updated", "spatial_update", "volume_changed"}:
+            self._sync_from_handler()
 
     

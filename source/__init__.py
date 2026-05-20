@@ -1,3 +1,1 @@
-from . import UI
-
-__all__ = ["UI"]
+__all__ = ["UI", "core"]
